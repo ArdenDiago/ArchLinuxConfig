@@ -1,0 +1,29 @@
+# Isolated test environment for NiriFullSetup (noctalia), sibling to
+# Dockerfile (desktopdesigner). Same nested-in-host-Wayland-session trick,
+# see that file's header comment for how/why. No sddm/systemd/DMS-migration
+# steps here — those are real-login-manager concerns from
+# NiriFullSetup/setup/setup.sh that don't apply to a container where niri is
+# launched directly.
+FROM archlinux:base
+
+COPY mirrorlist /etc/pacman.d/mirrorlist
+
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm \
+        niri noctalia \
+        alacritty fuzzel hyprlock mako btop kwallet polkit-gnome \
+        ttf-dejavu wtype \
+        sudo which \
+    && pacman -Scc --noconfirm
+
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g ${GID} tester && \
+    useradd -m -u ${UID} -g ${GID} -s /bin/bash tester && \
+    echo "tester ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/tester
+
+USER tester
+WORKDIR /home/tester
+ENV XDG_RUNTIME_DIR=/run/user/1000
+
+CMD ["bash"]

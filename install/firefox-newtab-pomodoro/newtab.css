@@ -1,0 +1,447 @@
+/* Same aurora + glass language as the firefox-themes/hover-titlebar
+   theme's content.css, reimplemented here because this page fully
+   replaces about:newtab (Activity Stream) rather than styling it — so
+   none of that theme's selectors apply to this document at all. */
+
+:root {
+  --nt-bg-0: #05070d;
+  --nt-bg-1: #0b1020;
+  --nt-accent: #63e6ff;
+  --nt-accent-2: #a78bfa;
+  --nt-glass: rgba(255, 255, 255, 0.06);
+  --nt-glass-border: rgba(255, 255, 255, 0.14);
+  --nt-radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  height: 100vh;
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  position: relative;
+  background:
+    radial-gradient(60vmax 60vmax at 15% 20%, rgba(99, 230, 255, 0.16), transparent 60%),
+    radial-gradient(50vmax 50vmax at 85% 75%, rgba(167, 139, 250, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--nt-bg-1), var(--nt-bg-0));
+  background-attachment: fixed;
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  animation: nt-aurora 24s ease-in-out infinite alternate;
+}
+
+@keyframes nt-aurora {
+  0%   { background-position: 0% 0%, 100% 100%, center; }
+  100% { background-position: 20% 15%, 80% 85%, center; }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(120vmax 80vmax at 50% 0%, black, transparent 70%);
+}
+
+* {
+  scrollbar-color: var(--nt-accent-2) transparent;
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    animation: none;
+  }
+}
+
+/* ---- Search: same pill design as the CSS theme's centered search box ---- */
+.search-wrapper {
+  position: relative;
+  margin: 38vh auto 0;
+  width: min(560px, 88vw);
+}
+
+.search-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: -28px -12px;
+  z-index: -1;
+  background:
+    radial-gradient(60% 160% at 28% 50%, rgba(99, 230, 255, 0.18), transparent 70%),
+    radial-gradient(60% 160% at 72% 50%, rgba(167, 139, 250, 0.16), transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.search-inner-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--nt-glass-border);
+  border-radius: 999px;
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  padding: 15px 24px;
+  transition: box-shadow 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+              border-color 0.3s ease,
+              transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+              background 0.3s ease;
+}
+
+.search-inner-wrapper:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.search-inner-wrapper:focus-within {
+  transform: translateY(-2px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
+  border-color: var(--nt-accent);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.45),
+    0 0 0 3px rgba(99, 230, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.search-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+#search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+#search-input::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-inner-wrapper {
+    transition: none;
+  }
+  .search-inner-wrapper:focus-within {
+    transform: none;
+  }
+}
+
+/* ---- Pomodoro widget: centered directly below the search box, where
+   the native "Widgets" row (Results/Upcoming, world clock, checklist)
+   used to sit — those don't exist on this page at all, rather than
+   being hidden. ---- */
+.pomodoro {
+  margin: 32px auto 0;
+  width: 176px;
+  padding: 20px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--nt-glass-border);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.pomodoro-mode {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nt-accent);
+  transition: color 0.3s ease;
+}
+
+.pomodoro.mode-break .pomodoro-mode {
+  color: var(--nt-accent-2);
+}
+
+.pomodoro-ring-wrap {
+  position: relative;
+  width: 108px;
+  height: 108px;
+}
+
+.pomodoro-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 6;
+}
+
+.ring-progress {
+  fill: none;
+  stroke: var(--nt-accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 276.46;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+}
+
+.pomodoro.mode-break .ring-progress {
+  stroke: var(--nt-accent-2);
+}
+
+.pomodoro-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.pomodoro-btn {
+  appearance: none;
+  border: 1px solid var(--nt-glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.pomodoro-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pomodoro-btn:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+.pomodoro-btn.primary {
+  background: rgba(99, 230, 255, 0.18);
+  border-color: rgba(99, 230, 255, 0.4);
+  color: #dffbff;
+}
+
+.pomodoro-sessions {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Radial link launcher: anchored to the left edge, vertically
+   centered. .radial-launcher itself carries no size — it's just the
+   shared (0,0) anchor point that the hub, the ring, and the add button
+   all position themselves relative to via `position: absolute`, so
+   none of them are nested inside each other. (A ring icon nested inside
+   the hub <button> would be invalid HTML and double-fire clicks via
+   event bubbling — keeping them siblings avoids that entirely.) ---- */
+.radial-launcher {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  z-index: 30;
+}
+
+.radial-hub {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--nt-glass-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.radial-hub::after {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.radial-hub:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.radial-launcher.open .radial-hub {
+  border-color: var(--nt-accent);
+  transform: scale(1.06);
+}
+
+.radial-hub:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+/* Invisible, generously-sized hover/scroll target centered on the same
+   anchor point as the ring — without this, the wheel listener (and easy
+   hovering in general) only fires over the tiny hub or the small 34px
+   icon circles themselves, so you'd have to land the cursor precisely
+   on one of them just to scroll the wheel. This covers the whole area
+   the icons can occupy (RADIUS 150 in launcher.js + icon half-width,
+   plus slack) so scrolling works anywhere in the vicinity, not just
+   pixel-perfect on an icon. Sits below the ring/hub/add button in paint
+   order (first in the DOM) so clicks on the actual controls still reach
+   them first. */
+.radial-hitzone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 360px;
+  height: 360px;
+  margin: -180px 0 0 -180px;
+  pointer-events: auto;
+}
+
+.radial-hitzone[hidden] {
+  display: none;
+}
+
+/* The ring's own (0,0) sits exactly on .radial-launcher's anchor point,
+   which is also the hub's center — so icon angles/radius are computed
+   from the same origin the hub visually occupies. */
+.radial-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.radial-ring[hidden] {
+  display: none;
+}
+
+/* Small icons only, by design — this is a quick-launcher, not a tile
+   grid. Position comes from --x/--y custom properties set per-icon in
+   launcher.js (computed from the circular queue's rotation) rather than
+   an inline `transform`, specifically so the :hover rule below can add
+   a scale on top of the translate — an inline style.transform would
+   always beat a stylesheet rule, hover-scale included. The transition
+   here is what makes rotating actually *look* like a wheel revolving
+   rather than icons teleporting between slots. */
+.radial-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  margin: -17px;
+  /* Rounded-square, not a full circle — the real logo assets (icons/)
+     already ship with this same soft-square corner style, so cropping
+     them into a circle would fight their own art instead of matching
+     it; this keeps the letter-badge fallback consistent with them. */
+  border-radius: 22%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transform: translate(var(--x, 0), var(--y, 0)) scale(1);
+  transition: transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow 0.2s ease,
+              border-color 0.2s ease;
+}
+
+.radial-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.radial-icon:hover {
+  transform: translate(var(--x, 0), var(--y, 0)) scale(1.35);
+  z-index: 1;
+}
+
+.radial-icon.selected {
+  border-color: var(--nt-accent);
+  box-shadow: 0 0 0 3px rgba(99, 230, 255, 0.3), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.radial-icon:focus-visible {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: 2px;
+}
+
+.radial-add {
+  position: absolute;
+  top: 40px;
+  left: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.radial-add[hidden] {
+  display: none;
+}
+
+.radial-add:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radial-icon {
+    transition: none;
+  }
+}

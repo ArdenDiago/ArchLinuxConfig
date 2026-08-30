@@ -1,0 +1,43 @@
+// Scratch niri config for the isolated Docker test environment only.
+// Deliberately NOT a copy of the real dotfiles/niri/config.kdl — no
+// hardcoded output names (nested/winit mode creates its own virtual
+// output, "HDMI-A-1"/"eDP-1" don't exist in here), no DMS ipc calls (DMS
+// isn't installed in this container). Copy individual bind lines out to
+// verify them, don't run this file's binds as if they were the real config.
+
+input {
+    keyboard {
+        xkb {}
+    }
+}
+
+layout {
+    gaps 8
+}
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+// Launches the real desktopdesigner shell under test — needs to be spawned
+// BY niri (not `docker exec`ed separately) so it inherits NIRI_SOCKET from
+// niri's own environment.
+spawn-at-startup "qs" "-p" "/workspace/desktopdesigner"
+
+binds {
+    Mod+Return hotkey-overlay-title="Terminal: alacritty" { spawn "alacritty"; }
+    Mod+Q repeat=false { close-window; }
+    Mod+Shift+E { quit; }
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    // NOT the real KEYBINDINGS.md binds (Mod+Space/Mod+W/Mod+Shift+N) —
+    // those are compositor-global on the HOST's real niri too, so pressing
+    // them here while this nested window has focus would very likely
+    // trigger the host's real DMS instead of ever reaching this test
+    // instance. Ctrl+Alt+<letter> avoids that collision for live testing;
+    // the real deployment still uses the documented Mod+ combos.
+    Ctrl+Alt+S { spawn "qs" "ipc" "-p" "/workspace/desktopdesigner" "call" "spotlight" "toggle"; }
+    Ctrl+Alt+W { spawn "qs" "ipc" "-p" "/workspace/desktopdesigner" "call" "wallpaperPicker" "toggle"; }
+    Ctrl+Alt+N { spawn "qs" "ipc" "-p" "/workspace/desktopdesigner" "call" "quickNotes" "toggle"; }
+    Ctrl+Alt+B { spawn "qs" "ipc" "-p" "/workspace/desktopdesigner" "call" "networkCenter" "toggle"; }
+}

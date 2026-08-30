@@ -1,0 +1,8 @@
+[SddmGreeterTheme]
+Name=qylock-dark
+Description=Five qylock layouts (Sword, Forest, Field, Last of Us, Clockwork), recolored dark, switchable with "/"
+Author=arden
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

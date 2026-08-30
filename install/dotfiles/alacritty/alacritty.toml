@@ -1,0 +1,84 @@
+[window]
+decorations = "None"
+startup_mode = "Maximized"
+
+[terminal.shell]
+program = "/usr/bin/tmux"
+args = ["new-session"]
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001B\r"
+
+# --- tmux control bindings ---
+# These send private CSI sequences that tmux (see ~/.config/tmux/tmux.conf)
+# maps to real tmux commands via `user-keys`. Custom sequences are used
+# because most terminals can't distinguish Ctrl+Shift+<letter> from
+# Ctrl+<letter> otherwise.
+
+# Ctrl+Shift+D -> horizontal split (top/bottom panes)
+[[keyboard.bindings]]
+key = "D"
+mods = "Control|Shift"
+chars = "\u001B[90~"
+
+# Ctrl+Alt+D -> vertical split (left/right panes)
+[[keyboard.bindings]]
+key = "D"
+mods = "Control|Alt"
+chars = "\u001B[91~"
+
+# Ctrl+Alt+Left/Right/Up/Down -> move focus between panes
+[[keyboard.bindings]]
+key = "Left"
+mods = "Control|Alt"
+chars = "\u001B[92~"
+
+[[keyboard.bindings]]
+key = "Right"
+mods = "Control|Alt"
+chars = "\u001B[93~"
+
+[[keyboard.bindings]]
+key = "Up"
+mods = "Control|Alt"
+chars = "\u001B[94~"
+
+[[keyboard.bindings]]
+key = "Down"
+mods = "Control|Alt"
+chars = "\u001B[95~"
+
+# Ctrl+Shift+H -> pick one of the last 10 sessions to switch to
+[[keyboard.bindings]]
+key = "H"
+mods = "Control|Shift"
+chars = "\u001B[96~"
+
+# Ctrl+Shift+X -> close only the current pane (one shell)
+[[keyboard.bindings]]
+key = "X"
+mods = "Control|Shift"
+chars = "\u001B[97~"
+
+# Ctrl+Alt+X -> kill the whole tmux session, closing the terminal window
+[[keyboard.bindings]]
+key = "X"
+mods = "Control|Alt"
+chars = "\u001B[98~"
+
+# Ctrl+Shift+M -> minimize the window (no title bar button to click since
+# decorations are disabled)
+[[keyboard.bindings]]
+key = "M"
+mods = "Control|Shift"
+action = "Minimize"
+
+# Ctrl+N -> open a new terminal window
+[[keyboard.bindings]]
+key = "N"
+mods = "Control"
+action = "CreateNewWindow"
+
+[terminal]

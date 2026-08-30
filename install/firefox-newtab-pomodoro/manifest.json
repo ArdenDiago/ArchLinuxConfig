@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "New Tab — Search + Pomodoro",
+  "version": "1.0.0",
+  "description": "Overrides the New Tab page with a single centered search box and a working Pomodoro timer, replacing the weather widget and the Customize gear entirely.",
+  "permissions": ["search", "notifications"],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "newtab-pomodoro@linux-conf.local"
+    }
+  }
+}

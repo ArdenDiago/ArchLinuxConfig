@@ -1,0 +1,13 @@
+==> Logging this run to /root/.cache/archlinuxnewconfig-setup.log
+==> Linked /root/.config/quickshell/desktopdesigner -> /mnt/shared/desktopdesigner
+    Run with: qs -c desktopdesigner
+==> Linked /root/.config/quickshell/desktopdesigner-lock -> /mnt/shared/desktopdesigner-lock
+    Manual step (docs/01-lockscreen.md): point Mod+Alt+L at 'loginctl lock-session'
+    instead of the current hyprlock spawn, once a logind-Lock-signal listener
+    launches 'qs -c desktopdesigner-lock'. Keep hyprlock installed as fallback.
+    Finished `release` profile [optimized] target(s) in 0.04s
+==> Built /root/.cache/terminal-clock/target/release/terminal-clock
+    ~/.config/niri/dms/binds.kdl:8 already binds Mod+T to 'spawn "alacritty"'.
+    Pick a different key or replace that bind yourself, then add:
+    Mod+T hotkey-overlay-title="Terminal Clock" { spawn-sh "/mnt/shared/terminal-clock/popup.sh"; }
+==> Done. Full log: /root/.cache/archlinuxnewconfig-setup.log

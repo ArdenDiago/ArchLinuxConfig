@@ -1,0 +1,100 @@
+# ble.sh user config
+
+# Autosuggestion (the "ghost text" completion shown as you type).
+# Default is bg=254,fg=238 which renders as a bright light-gray block
+# with dark text. This switches it to plain dim-gray text with no
+# background highlight.
+ble-color-setface auto_complete fg=242
+
+# Tab = accept ghost-text suggestion (if one is showing) one path segment
+# (up to the next "/") at a time, instead of the whole suggestion in one
+# shot. Adapted from ble.sh's own built-in auto_complete/insert-word (the
+# M-f/M-Right binding a few lines down), which does the same thing but
+# splits on whitespace instead of "/". Non-path suggestions (no "/" at all,
+# e.g. a plain remembered command) still get fully accepted on the first
+# Tab, since the whole remainder matches in one go.
+#
+# Why: history-based suggestions default to your MOST-USED past path, which
+# is often wrong once you're headed somewhere new that merely shares a
+# prefix (e.g. typed "a/", history suggests "a/b/c", you actually want
+# "a/d/e"). Accepting one segment at a time means: Tab -> "a/", then type
+# "d" yourself -> the stale "b/c" suggestion no longer matches and clears,
+# so the next Tab falls through to real filesystem completion for what's
+# actually in a/d/ instead of blindly inserting the wrong remembered path.
+function ble/widget/auto_complete/insert-path-segment {
+  if [[ $_ble_complete_ac_type == [ch] ]]; then
+    local rex='^[^/]*/?'
+    local ins=${_ble_edit_str:_ble_edit_ind:_ble_edit_mark-_ble_edit_ind}
+    [[ $ins =~ $rex ]]
+    if [[ $BASH_REMATCH == "$ins" ]]; then
+      ble/widget/auto_complete/insert
+    else
+      local ins=$BASH_REMATCH
+      ((_ble_edit_ind+=${#ins}))
+      local comp_text=$_ble_edit_str
+      local insert_beg=$_ble_complete_ac_comp1
+      local insert_end=$_ble_edit_ind
+      local insert=${_ble_edit_str:insert_beg:insert_end-insert_beg}$ins
+      local suffix=
+      ble/util/invoke-hook _ble_complete_insert_hook
+    fi
+  else
+    ble/widget/auto_complete/insert-on-end
+  fi
+}
+
+# Bound under both names because a physical Tab keypress can decode as
+# either depending on terminal/keyboard-protocol negotiation — ble.sh's own
+# default completion binding (ble-decode/keymap:safe/bind-complete) covers
+# both 'TAB' and 'C-i' for the same reason; binding only 'TAB' here silently
+# missed real Tab presses that decode as 'C-i'.
+ble-bind -m auto_complete -f TAB auto_complete/insert-path-segment
+ble-bind -m auto_complete -f C-i auto_complete/insert-path-segment
+
+# Enter always executes, even on a pasted multi-line command. By default
+# RET/C-m run ble/widget/accept-single-line-or-newline, which inserts
+# another newline instead of running whenever the buffer has more than one
+# line (that's the "-- MULTILINE --" prompt after a multi-line paste) and
+# only C-j actually runs it. Rebinding RET/C-m straight to accept-line
+# (the same widget C-j already uses) removes that pause entirely: a
+# multi-line paste just sits in the buffer as-is, and Enter runs it.
+ble-bind -f RET accept-line
+ble-bind -f C-m accept-line
+
+# The "-- MULTILINE --" status line's hint text — "(RET or C-m: insert a
+# newline, C-j: run)" — describes the stock behavior we just rebound above,
+# so it's now just wrong: RET runs the command, it doesn't insert a
+# newline, and C-j isn't special anymore. Overridden here (copy of
+# keymap/emacs.sh's ble/keymap:emacs/update-mode-name with that one branch
+# removed) to drop the stale hint. The "-- MULTILINE --" tag itself is
+# still accurate (you are editing a multi-line buffer) so it stays.
+function ble/keymap:emacs/update-mode-name {
+  local opt_multiline=; [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
+  local mode=$opt_multiline:$_ble_edit_arg
+  [[ $mode == "$_ble_keymap_emacs_modeline" ]] && return
+  _ble_keymap_emacs_modeline=$mode
+  local name=
+  [[ $opt_multiline ]] && name=$'\e[1m-- MULTILINE --\e[m'
+  if [[ $_ble_edit_arg ]]; then
+    name="$name${name:+ }(arg: $_ble_edit_arg)"
+  fi
+  ble-edit/info/default ansi "$name"
+}
+
+# Ctrl+U clears the WHOLE buffer, not just back to the start of the current
+# line. The stock kill-backward-line only kills up to the start of the
+# current line, which on a multi-line paste leaves the earlier lines
+# behind. Adapted from ble.sh's own kill-backward-text (kills point to
+# buffer-start) but extended to also drop everything after point, so the
+# whole pasted block is gone in one press regardless of where the cursor
+# ended up in it.
+function ble/widget/kill-whole-buffer {
+  ble-edit/content/clear-arg
+  ((${#_ble_edit_str}==0)) && return
+  _ble_edit_kill_ring=$_ble_edit_str
+  _ble_edit_kill_type=
+  ble-edit/content/replace 0 "${#_ble_edit_str}" ''
+  _ble_edit_ind=0
+  _ble_edit_mark=0
+}
+ble-bind -f C-u kill-whole-buffer
