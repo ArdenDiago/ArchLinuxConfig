@@ -1,0 +1,39 @@
+# Display Control — a 4-mode quick switcher (Extend / Duplicate / Laptop
+# only / Screen only), plus a per-display picker to extend a specific
+# display in a direction or turn it on/off individually. Niri has no
+# output-mirroring command and can't fake one via overlapping positions
+# either, so Duplicate shells out to wl-mirror (optional dependency,
+# fullscreened onto the external output) instead, with a Freeze toggle
+# (wl-mirror --stream over a control FIFO) to pause that image live.
+# Leaving Duplicate for another mode pushes whatever real windows were
+# hidden under the fullscreen mirror to the bottom of that output's
+# window stack (jq + niri msg action focus-window/move-column-to-last).
+
+id = "arden/display-control"
+name = "Display Control"
+version = "1.5.0"
+plugin_api = 13
+author = "arden"
+license = "MIT"
+dependencies = ["niri", "jq"]
+tags = ["bar", "niri", "panel", "service", "display"]
+icon = "device-desktop"
+description = "Extend, duplicate, laptop-only, or screen-only — plus per-display extend and power."
+
+[[service]]
+id = "displays"
+entry = "service.luau"
+
+[[widget]]
+id = "bar"
+entry = "bar.luau"
+
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+width = 360
+height = 420
+placement = "attached"
+position = "auto"
+open_near_click = true
+capture_keys = ["Up", "Down", "Left", "Right", "Return", "Escape"]
