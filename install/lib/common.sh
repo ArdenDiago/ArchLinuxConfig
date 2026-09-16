@@ -238,9 +238,9 @@ banner() {
   echo -e "${C_MAGENTA}╭$(_box_border)╮${C_RESET}"
   _box_line "ARCH LINUX SETUP" "${C_BOLD}${C_CYAN}"
   echo -e "${C_MAGENTA}╰$(_box_border)╯${C_RESET}"
-  echo -e "${C_DIM}  Vanilla Arch — Hyprland + Niri, pick your session at login${C_RESET}"
-  echo -e "${C_DIM}  DankMaterialShell is NOT installed here — desktopdesigner replaces it,${C_RESET}"
-  echo -e "${C_DIM}  see ../setup.sh once this finishes.${C_RESET}"
+  echo -e "${C_DIM}  Vanilla Arch — Niri${C_RESET}"
+  echo -e "${C_DIM}  DankMaterialShell is NOT installed here — noctalia replaces it${C_RESET}"
+  echo -e "${C_DIM}  on the Niri session (see modules/16-niri.sh).${C_RESET}"
 }
 
 # summary_box "color" "line one" "line two" ...

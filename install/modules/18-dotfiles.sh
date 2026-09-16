@@ -37,6 +37,11 @@ module_step() {
   mkdir -p "$HOME/.config/alacritty" "$HOME/.config/tmux"
 
   install_dotfile "$src/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
+  # Escape -> Quit, for the floating wifi/bluetooth TUI windows only (see
+  # dotfiles/niri/launch-wifi-tui.sh / launch-bluetooth-tui.sh) — kept out
+  # of alacritty.toml itself so Escape keeps its normal behavior in every
+  # other terminal.
+  install_dotfile "$src/alacritty/floating-tui.toml" "$HOME/.config/alacritty/floating-tui.toml"
   install_dotfile "$src/tmux/tmux.conf"           "$HOME/.config/tmux/tmux.conf"
   install_dotfile "$src/tmux/session_limit.sh"    "$HOME/.config/tmux/session_limit.sh"
   install_dotfile "$src/tmux/welcome.sh"          "$HOME/.config/tmux/welcome.sh"

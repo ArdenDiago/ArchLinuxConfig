@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wrapper for the global Mod+T niri bind — see docs/06-terminal-clock.md.
+# Wrapper for the global Mod+T niri bind — see docs/terminal-clock.md.
 # Reuses bigclock.sh's own pattern (dotfiles/tmux/tmux.conf: `bind-key t
 # display-popup -w 100% -h 100% -E "~/.config/tmux/bigclock.sh"`) but
 # triggered from the compositor instead of from inside an attached tmux

@@ -1,0 +1,15 @@
+# Alacritty config for the floating wifi/bluetooth TUI windows launched by
+# launch-wifi-tui.sh / launch-bluetooth-tui.sh (Mod+Shift+N / Mod+B). Imports
+# the regular config for theme/font, then adds Escape -> Quit so pressing Esc
+# closes the window outright, since neither impala nor bluetuith claims Esc
+# for anything of their own.
+#
+# Kept as a separate file (via --config-file) rather than added to
+# alacritty.toml directly, so this doesn't change Escape's behavior in
+# regular terminals.
+
+import = ["~/.config/alacritty/alacritty.toml"]
+
+[[keyboard.bindings]]
+key = "Escape"
+action = "Quit"

@@ -1,33 +1,112 @@
 #!/usr/bin/env bash
 #
-# Niri (scrollable-tiling Wayland compositor) — the second of the two
-# sessions this script offers alongside Hyprland (module 15). It's a
-# proper package in Arch's official extra repo, no AUR/source build
-# needed. xwayland-satellite gives it X11 app support the way Hyprland
-# gets it natively from xorg-xwayland. polkit-gnome is shared with the
-# Hyprland module (harmless no-op if already installed) since whichever
-# session you pick at the SDDM login screen needs its own agent running.
+# Niri (scrollable-tiling Wayland compositor) + noctalia, the desktop shell
+# this repo actually runs. Niri is a proper package in Arch's official
+# extra repo, no AUR/source build needed; noctalia is too as of noctalia
+# v4+ (no quickshell-git/AUR needed either). xwayland-satellite gives niri
+# X11 app support. polkit-gnome supplies the auth agent the session needs.
+# alacritty/btop come from modules/03-core-apps.sh, hyprlock (the
+# lock-screen binary niri binds to) from modules/24-lockscreen.sh — not
+# reinstalled here.
 #
-# Unlike the Hyprland module (which pulls in xdg-desktop-portal-hyprland),
 # niri has no portal package of its own — without one, apps like Firefox
 # silently fail to screen-share and get a broken file picker. gnome/gtk
 # below plus dotfiles/niri/niri-portals.conf (installed at the bottom)
 # cover that; see that file for why those two specifically.
 #
-MODULE_DESC="Niri"
+MODULE_DESC="Niri + noctalia"
 
 module_step() {
-  # brightnessctl/playerctl/cliphist/wlogout replace the dms-ipc-routed
-  # media keys, clipboard, and power menu binds below — wireplumber (wpctl)
-  # and btop are already pulled in elsewhere, no dms.service dependency left.
-  pac_install niri fuzzel mako swaybg xwayland-satellite \
-    brightnessctl playerctl cliphist wlogout \
+  # cliphist/wlogout dropped: noctalia's own clipboard and power-menu panels
+  # (bound in binds.kdl) replace them, same as they replaced DMS's ipc calls
+  # before. swaybg dropped too — noctalia manages its own wallpaper/daemon,
+  # no separate wallpaper compositor needed for the niri session.
+  pac_install niri noctalia kwallet xwayland-satellite \
+    brightnessctl playerctl \
     polkit-gnome xdg-desktop-portal xdg-desktop-portal-gnome xdg-desktop-portal-gtk || return 1
 
-  mkdir -p "$HOME/.config/niri" "$HOME/.config/xdg-desktop-portal"
+  # niri needs a real DRM render device (docs/virtualbox-niri.md) — under
+  # VirtualBox specifically, guest additions are the one thing that can
+  # sometimes get it one, so install/enable them proactively. Harmless
+  # no-op on bare metal or any other hypervisor.
+  if [ "$(systemd-detect-virt)" = "oracle" ]; then
+    log "VirtualBox detected — installing guest additions (see docs/virtualbox-niri.md if niri still shows a black screen)."
+    pac_install virtualbox-guest-utils || return 1
+    sudo systemctl enable --now vboxservice.service || return 1
+  fi
+
+  mkdir -p "$HOME/.config/niri" "$HOME/.config/xdg-desktop-portal" \
+    "$HOME/.local/state/noctalia" "$HOME/Pictures/Wallpapers"
+
   install_dotfile "$SCRIPT_DIR/dotfiles/niri/config.kdl" "$HOME/.config/niri/config.kdl"
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/binds.kdl" "$HOME/.config/niri/binds.kdl"
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/sync-overview-color.sh" "$HOME/.config/niri/sync-overview-color.sh"
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/launch-btop-float.sh" "$HOME/.config/niri/launch-btop-float.sh"
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/launch-wifi-tui.sh" "$HOME/.config/niri/launch-wifi-tui.sh"
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/launch-bluetooth-tui.sh" "$HOME/.config/niri/launch-bluetooth-tui.sh"
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/brightness-step.sh" "$HOME/.config/niri/brightness-step.sh"
+  chmod +x "$HOME/.config/niri/"{sync-overview-color.sh,launch-btop-float.sh,launch-wifi-tui.sh,launch-bluetooth-tui.sh,brightness-step.sh}
   install_dotfile "$SCRIPT_DIR/dotfiles/niri/niri-portals.conf" \
     "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
+
+  sed "s|@@HOME@@|$HOME|g" "$SCRIPT_DIR/dotfiles/noctalia/settings.toml" > "$HOME/.local/state/noctalia/settings.toml"
+
+  # Custom noctalia bar widget: a 4-mode quick switcher (Extend / Duplicate
+  # / Laptop only / Screen only), plus a per-display picker to extend a
+  # specific display in a direction or turn it on/off individually. Niri
+  # has no output-mirroring command and can't fake one via overlapping
+  # positions either (its workspaces are strictly per-output), so
+  # Duplicate explains that instead of pretending to duplicate. A plugin,
+  # not a patch to noctalia itself — dropped into a "path"-kind plugin
+  # source and enabled via [plugins] in settings.toml above, no
+  # `noctalia msg` IPC needed since noctalia reads that straight from
+  # settings.toml on startup. See
+  # dotfiles/noctalia/plugins/local/display-control/*.luau.
+  mkdir -p "$HOME/.config/noctalia/plugins/local/display-control"
+  for f in plugin.toml bar.luau panel.luau service.luau; do
+    install_dotfile "$SCRIPT_DIR/dotfiles/noctalia/plugins/local/display-control/$f" \
+      "$HOME/.config/noctalia/plugins/local/display-control/$f"
+  done
+
+  if [ -z "$(find "$HOME/Pictures/Wallpapers" -maxdepth 1 -type f 2>/dev/null)" ]; then
+    cp "$SCRIPT_DIR/dotfiles/noctalia/wallpaper.jpg" "$HOME/Pictures/Wallpapers/wallpaper.jpg"
+  fi
+
+  # config.kdl's `include "noctalia.kdl"` (theme colors, regenerated by
+  # noctalia on every palette change) is a hard parse error if the file
+  # doesn't exist at all — which it won't on a first-ever install, since
+  # nothing has generated it yet. An empty stub keeps niri's config valid
+  # until `templates-apply` below (or noctalia's own first real run)
+  # produces the real one.
+  [ -f "$HOME/.config/niri/noctalia.kdl" ] || : > "$HOME/.config/niri/noctalia.kdl"
+
+  # A prior install that had DankMaterialShell running fights noctalia for
+  # the compositor's notification D-Bus name and the same bar/panel screen
+  # space — same reason modules/16-niri.sh used to disable it for
+  # desktopdesigner. Safe no-op if DMS was never installed.
+  if systemctl --user is-enabled dms.service &>/dev/null || systemctl --user is-active dms.service &>/dev/null; then
+    systemctl --user disable --now dms.service
+    log "Disabled dms.service (DankMaterialShell) — it was still enabled from a prior install and would otherwise fight noctalia for the bar."
+  fi
+
+  # mako ships a D-Bus service file (fr.emersion.mako.service) claiming
+  # org.freedesktop.Notifications — if that name is ever unclaimed (e.g. a
+  # race at login, or noctalia restarting), dbus-broker auto-launches mako
+  # to grab it regardless of mako.service being disabled or absent from any
+  # compositor's autostart, silently swapping noctalia's notification popups
+  # for mako's. `disable` doesn't stop that D-Bus activation path, only
+  # `mask` does. Nothing in this repo installs mako anymore, but a prior
+  # install (before the Hyprland module was dropped) may still have it
+  # around — masking is a harmless no-op if it's absent.
+  systemctl --user mask mako.service &>/dev/null || true
+
+  # Best-effort: needs noctalia actually running to generate real theme
+  # files (GTK/alacritty/Qt/btop/niri borders). No-ops quietly on a fresh
+  # install with no live session yet — the noctalia.kdl stub above keeps
+  # niri launchable regardless; run `noctalia msg templates-apply` by hand
+  # after first login if you want the real palette immediately instead of
+  # waiting for noctalia's own first-run.
+  noctalia msg templates-apply &>/dev/null || true
 
   if lspci | grep -qi nvidia; then
     warn "There is a known niri+NVIDIA high-VRAM-usage quirk (heap reuse);"
@@ -44,7 +123,7 @@ module_step() {
   # apps.
   if pgrep -x niri &>/dev/null; then
     systemctl --user restart xdg-desktop-portal.service &>/dev/null || true
-    warn "niri is running — log out and back in for MOZ_ENABLE_WAYLAND/GTK_USE_PORTAL to take effect in Firefox."
+    warn "niri is running — log out and back in for MOZ_ENABLE_WAYLAND/GTK_USE_PORTAL/noctalia to take effect."
   fi
 
   return 0

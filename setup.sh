@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Interactive installer: pick which components to set up, symlink them into
-# the real Quickshell config dir, build terminal-clock. Never touches niri's
-# live config.kdl itself — that's install/modules/16-niri.sh's job, and its
-# copy of dotfiles/niri/config.kdl already has the desktopdesigner/
-# terminal-clock keybinds baked in (see KEYBINDINGS.md). This script just
-# builds the binaries those binds point at. See docs/0N-*.md for detail.
+# Interactive installer for the optional, not-yet-wired-into-the-main-
+# bootstrap extras: quickshell-lock (custom lock screen + Snake game) and
+# terminal-clock (Rust/Ratatui fullscreen clock, Mod+T popup). The real
+# desktop shell (niri + noctalia) is part of install/setup.sh's system
+# bootstrap now, not a symlink choice here — see install/modules/16-niri.sh.
+# This script just builds/symlinks the two standalone extras and never
+# touches niri's live config.kdl itself. See README.md for the full picture.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,9 +22,8 @@ need_pkg() {
 }
 
 CHOICES=$(whiptail --checklist "Select components to set up (space to toggle, enter to confirm)" 20 78 5 \
-  desktopdesigner    "Bar/Spotlight/QuickNotes/WallpaperPicker/NetworkCenter" ON \
-  desktopdesigner-lock "Lock screen + Snake game (separate qs instance)"      OFF \
-  terminal-clock     "Rust/Ratatui fullscreen clock, Mod+T popup"             OFF \
+  quickshell-lock "Lock screen + Snake game (separate qs instance, not yet wired to Mod+Alt+L)" OFF \
+  terminal-clock  "Rust/Ratatui fullscreen clock, Mod+T popup"                                  ON \
   3>&1 1>&2 2>&3) || { echo "Cancelled."; exit 0; }
 
 [ -z "$CHOICES" ] && { echo "Nothing selected."; exit 0; }
@@ -47,36 +47,20 @@ sudo -v
 # Dependencies first, per selected component, before any symlinking/building.
 for choice in "${CHOICES[@]}"; do
   case "$choice" in
-    desktopdesigner|desktopdesigner-lock) need_pkg qs quickshell ;;
+    quickshell-lock) need_pkg qs quickshell ;;
     terminal-clock) need_pkg cargo rust; need_pkg tmux tmux; need_pkg alacritty alacritty ;;
   esac
 done
 
 for choice in "${CHOICES[@]}"; do
   case "$choice" in
-    desktopdesigner)
+    quickshell-lock)
       mkdir -p "$QS_DIR"
-      ln -sfn "$REPO_DIR/desktopdesigner" "$QS_DIR/desktopdesigner"
-      echo "==> Linked $QS_DIR/desktopdesigner -> $REPO_DIR/desktopdesigner"
-      echo "    Run with: qs -c desktopdesigner"
-
-      # desktopdesigner replaces DankMaterialShell (README: "DMS itself is
-      # deliberately never installed here"). If a prior install left
-      # dms.service enabled, it keeps relaunching DMS's own bar/IPC on
-      # every login and fights desktopdesigner for the same layer-shell
-      # surface — same symptom as no bar/keybinds ever showing up.
-      if systemctl --user is-enabled dms.service &>/dev/null || systemctl --user is-active dms.service &>/dev/null; then
-        systemctl --user disable --now dms.service
-        echo "==> Disabled dms.service (DankMaterialShell) — it was still enabled from a prior install and would otherwise keep competing with desktopdesigner for the bar."
-      fi
-      ;;
-    desktopdesigner-lock)
-      mkdir -p "$QS_DIR"
-      ln -sfn "$REPO_DIR/desktopdesigner-lock" "$QS_DIR/desktopdesigner-lock"
-      echo "==> Linked $QS_DIR/desktopdesigner-lock -> $REPO_DIR/desktopdesigner-lock"
-      echo "    Manual step (docs/01-lockscreen.md): point Mod+Alt+L at 'loginctl lock-session'"
-      echo "    instead of the current hyprlock spawn, once a logind-Lock-signal listener"
-      echo "    launches 'qs -c desktopdesigner-lock'. Keep hyprlock installed as fallback."
+      ln -sfn "$REPO_DIR/quickshell-lock" "$QS_DIR/quickshell-lock"
+      echo "==> Linked $QS_DIR/quickshell-lock -> $REPO_DIR/quickshell-lock"
+      echo "    Manual step: point Mod+Alt+L at 'loginctl lock-session' instead of the"
+      echo "    current hyprlock spawn, once a logind-Lock-signal listener launches"
+      echo "    'qs -c quickshell-lock'. Keep hyprlock installed as fallback."
       ;;
     terminal-clock)
       # Building straight into $REPO_DIR/target fails with "Permission

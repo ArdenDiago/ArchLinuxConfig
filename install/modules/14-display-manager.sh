@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # SDDM display manager. This is what Omarchy skips (it boots straight into
-# Hyprland via a TTY autologin) but vanilla Arch needs a login screen where
-# you actually pick a session. Hyprland and Niri (modules 15/16) each drop
-# their own .desktop file into /usr/share/wayland-sessions/ when installed,
-# so SDDM's session dropdown lists both automatically — no wiring needed
-# here beyond having SDDM installed and enabled.
+# a compositor via a TTY autologin) but vanilla Arch needs a login screen.
+# Niri (module 16) drops its own .desktop file into
+# /usr/share/wayland-sessions/ when installed, so SDDM's session dropdown
+# lists it automatically — no wiring needed here beyond having SDDM
+# installed and enabled.
 #
 MODULE_DESC="Display manager (SDDM)"
 

@@ -7,7 +7,7 @@
 # the script waiting on the user. If a graphical session is already up,
 # it's launched in its own detached terminal instead, so the user can log
 # in on their own time without holding up everything after this module;
-# on a bare TTY (e.g. the very first run, before Hyprland/Niri exist)
+# on a bare TTY (e.g. the very first run, before Niri exists)
 # there's nowhere to open a terminal, so it just prints instructions
 # instead. All steps are idempotent: re-running this script won't
 # re-prompt, regenerate a key, or reopen a login terminal if already done.

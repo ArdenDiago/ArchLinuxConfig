@@ -7,10 +7,9 @@
 #
 # The background is a single still frame grabbed from that theme's bg.mp4
 # with ffmpeg rather than shipping another multi-MB image in this repo —
-# module 22 already downloaded the video, so this just reuses it. Both
-# modules 15 (Hyprland) and 16 (Niri) bind their lock key to hyprlock; it
-# works on either compositor since it only needs wlr-layer-shell +
-# ext-session-lock-v1, not Hyprland itself.
+# module 22 already downloaded the video, so this just reuses it. Module 16
+# (Niri) binds its lock key to hyprlock; it works without Hyprland itself
+# since it only needs wlr-layer-shell + ext-session-lock-v1.
 #
 QYLOCK_VIDEO="/usr/share/sddm/themes/pixel-night-city/bg.mp4"
 LOCK_BG="$HOME/.config/hypr/lockscreen.png"

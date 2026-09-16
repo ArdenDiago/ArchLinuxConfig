@@ -6,15 +6,23 @@
 # running now, e.g. DankMaterialShell's own), plus a handful of CLI tools
 # other pieces of this setup lean on:
 #
-# playerctl backs DMS's media widget, jq backs
-# dotfiles/wallpaper/select.sh (asking hyprctl/niri msg which output is
-# focused), pacman-contrib's checkupdates backs
+# playerctl backs DMS's media widget, jq backs the Mod+W/Mod+Shift+W skwd-wall
+# binds in dotfiles/niri/binds.kdl (flipping config.json's displayMode field
+# before each toggle), pacman-contrib's checkupdates backs
 # dotfiles/tmux/welcome.sh's update-count line, pamixer backs volume
 # control, and the Nerd Font renders glyph icons throughout (DMS's bar
 # included). cava + EasyEffects back the bassboost preset below.
-# polkit-gnome (already spawned by modules/15-hyprland.sh and
-# modules/16-niri.sh) supplies the auth agent NetworkManager needs for
-# some operations.
+# polkit-gnome (already spawned by modules/16-niri.sh) supplies the auth
+# agent NetworkManager needs for some operations.
+#
+# impala (wifi) and bluetuith (bluetooth) are keyboard-driven TUIs bound
+# to Mod+Shift+N / Mod+B in dotfiles/niri/binds.kdl, replacing noctalia's
+# mouse-driven Control Center tabs for those two — see
+# dotfiles/niri/launch-wifi-tui.sh / launch-bluetooth-tui.sh (installed by
+# modules/16-niri.sh). impala talks to iwd directly (not NetworkManager),
+# so iwd is installed and enabled here too even though NetworkManager is
+# the system's actual connection manager — impala needs iwd's own D-Bus
+# service running regardless of which one owns the wifi radio day to day.
 #
 # waybar itself, and its v7-theme dotfiles/click-handlers that only made
 # sense wired into a waybar custom-module JSON protocol (config-*.jsonc,
@@ -32,13 +40,18 @@ module_step() {
   local src="$SCRIPT_DIR/dotfiles/easyeffects"
 
   pac_install playerctl jq pamixer ttf-jetbrains-mono-nerd pacman-contrib \
-    networkmanager bluez bluez-utils libnotify easyeffects cava || return 1
+    networkmanager bluez bluez-utils libnotify easyeffects cava iwd impala || return 1
 
   track_rollback "sudo systemctl disable --now NetworkManager.service 2>/dev/null || true"
   sudo systemctl enable --now NetworkManager.service || return 1
 
   track_rollback "sudo systemctl disable --now bluetooth.service 2>/dev/null || true"
   sudo systemctl enable --now bluetooth.service || return 1
+
+  track_rollback "sudo systemctl disable --now iwd.service 2>/dev/null || true"
+  sudo systemctl enable --now iwd.service || return 1
+
+  aur_install bluetuith || return 1
 
   # EasyEffects 8.x (Qt) reads presets from XDG_DATA_HOME, not
   # ~/.config/easyeffects — confirmed by watching it auto-migrate a preset

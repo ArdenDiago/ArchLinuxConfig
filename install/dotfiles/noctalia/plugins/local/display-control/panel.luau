@@ -21,6 +21,10 @@ local mirrorActive = false
 local mirrorFrozen = false
 -- Keyboard cursor over the list (Up/Down/Return); mouse clicks ignore it.
 local cursorIndex = 0
+-- Armed by the first tap on the external chip's power badge; a second tap
+-- while armed actually disables. Only ever tracks the one draggable display,
+-- so a plain boolean is enough.
+local confirmingDisable = false
 
 local render
 
@@ -76,9 +80,7 @@ local function runNiri(command)
   end
 end
 
-local function extend(direction)
-  local target = findDisplay(selectedPort)
-  local ref = referenceDisplay(selectedPort)
+local function extendTargetFrom(target, ref, direction)
   if target == nil or ref == nil then
     actionError = "No other display to extend from."
     render()
@@ -97,19 +99,28 @@ local function extend(direction)
   end
 
   local command = "niri msg output " .. quoteShellArgument(target.port)
-    .. " position set " .. tostring(math.floor(x)) .. " " .. tostring(math.floor(y))
+    -- clap (niri's CLI parser) reads a leading '-' as a flag, not a negative
+    -- number, so a negative X/Y (extending left/above) needs `--` first.
+    .. " position set -- " .. tostring(math.floor(x)) .. " " .. tostring(math.floor(y))
   if not target.enabled then
     command = "niri msg output " .. quoteShellArgument(target.port) .. " on && " .. command
   end
   runNiri(command)
 end
 
-local function setPower(enabled)
-  local target = findDisplay(selectedPort)
+local function extend(direction)
+  extendTargetFrom(findDisplay(selectedPort), referenceDisplay(selectedPort), direction)
+end
+
+local function setPowerFor(target, enabled)
   if target == nil then
     return
   end
   runNiri("niri msg output " .. quoteShellArgument(target.port) .. " " .. (enabled and "on" or "off"))
+end
+
+local function setPower(enabled)
+  setPowerFor(findDisplay(selectedPort), enabled)
 end
 
 -- Laptop panel connector prefixes per the DRM/KMS naming convention.
@@ -138,6 +149,235 @@ local function externalDisplay(excludePort)
     end
   end
   return fallback
+end
+
+-- Which side of the laptop the external display currently sits on, from its
+-- real logical position — drives both the canvas layout order and (indirectly,
+-- since the layout mirrors reality) what "drag it onto an edge" looks like.
+local function relation(internal, external)
+  if external.x >= internal.x + internal.logicalWidth then
+    return "right"
+  elseif external.x + external.logicalWidth <= internal.x then
+    return "left"
+  elseif external.y >= internal.y + internal.logicalHeight then
+    return "below"
+  elseif external.y + external.logicalHeight <= internal.y then
+    return "above"
+  end
+  return "right"
+end
+
+-- Fit a display's aspect ratio into a small fixed-size chip, independently of
+-- the other display's chip — good enough for a 2-display canvas without
+-- needing DMS-style joint bounds/scale-factor math.
+local function chipSize(display)
+  local w = display.logicalWidth > 0 and display.logicalWidth or 1600
+  local h = display.logicalHeight > 0 and display.logicalHeight or 900
+  local scale = 130 / math.max(w, h)
+  return math.max(56, math.floor(w * scale)), math.max(40, math.floor(h * scale))
+end
+
+-- The power control for the draggable chip only (per-scope: the laptop panel
+-- chip stays plain, nothing asked for a toggle on it). A drag_source has no
+-- onClick of its own — the framework gives it a dedicated press/motion/
+-- release path straight to the drag controller instead (see chip() below) —
+-- so this lives as a small sibling node next to the drag handle, not nested
+-- inside it. Tap arms "disable" (shown on the chip itself); tap again to
+-- confirm. Turning back on needs no confirmation.
+local function powerBadge(display)
+  local armed = confirmingDisable
+  -- The standard power-button glyph (not the monitor icon the drag handle
+  -- already shows right next to it) so the badge actually reads as a power
+  -- toggle rather than a second, redundant display icon.
+  local glyphName = armed and "alert-triangle" or "power"
+  return ui.column({
+    width = 28,
+    height = 28,
+    align = "center",
+    justify = "center",
+    fill = armed and "on_primary/0.9" or "on_primary/0.18",
+    radius = 7,
+    onClick = function()
+      -- "column" has no enabled prop to gray this out with, so guard here.
+      if actionPending then
+        return
+      end
+      if not display.enabled then
+        confirmingDisable = false
+        setPowerFor(display, true)
+        return
+      end
+      if confirmingDisable then
+        confirmingDisable = false
+        setPowerFor(display, false)
+      else
+        confirmingDisable = true
+        render()
+      end
+    end,
+  }, { ui.glyph({
+    name = glyphName,
+    size = 16,
+    color = armed and "error" or (display.enabled and "on_primary" or "on_primary/0.55"),
+  }) })
+end
+
+local function chip(display, draggable, showBadge)
+  local w, h = chipSize(display)
+  local isInternal = isInternalPort(display.port)
+  local showArmed = showBadge and confirmingDisable
+  local labelText = showArmed and "Disable?" or (isInternal and "Laptop" or display.port)
+  local content = {
+    ui.glyph({ name = "device-desktop", size = 22, color = "on_primary" }),
+    ui.label({ text = labelText, fontSize = 12, color = "on_primary", maxLines = 1 }),
+  }
+
+  if not draggable then
+    return ui.column({
+      width = w,
+      height = h,
+      align = "center",
+      justify = "center",
+      gap = 4,
+      fill = display.enabled and "primary/0.8" or "surface_variant/0.5",
+      radius = 8,
+    }, content)
+  end
+
+  -- Both chips drag; whichever one you drop onto an edge zone becomes the
+  -- target, positioned relative to whichever chip you didn't drag (see
+  -- onCanvasDrop below) — dragging isn't limited to one fixed display.
+  local handle = ui.dragSource({
+    flexGrow = 1,
+    align = "center",
+    justify = "center",
+    gap = 4,
+    dragType = "display",
+    payload = display.port,
+    tooltip = "Drag onto an edge to reposition",
+    enabled = not actionPending,
+  }, content)
+
+  if not showBadge then
+    return ui.row({
+      width = w,
+      height = h,
+      align = "center",
+      justify = "center",
+      padding = 6,
+      fill = display.enabled and "primary/0.8" or "surface_variant/0.5",
+      radius = 8,
+    }, { handle })
+  end
+
+  return ui.row({
+    width = w,
+    height = h,
+    align = "center",
+    justify = "center",
+    gap = 6,
+    padding = 6,
+    fill = showArmed and "error/0.85" or (display.enabled and "primary/0.8" or "surface_variant/0.5"),
+    radius = 8,
+  }, { handle, powerBadge(display) })
+end
+
+-- Shared onDrop for all four edge zones: the zone's own `value` IS the
+-- direction, and either chip's payload can be the one dropped — whichever
+-- display it is becomes the target, positioned relative to the other one.
+local function onCanvasDrop(payload, direction)
+  local internal = internalDisplay()
+  if internal == nil then
+    return
+  end
+  local external = externalDisplay(internal.port)
+  if external == nil then
+    return
+  end
+
+  local target, ref
+  if payload == internal.port then
+    target, ref = internal, external
+  elseif payload == external.port then
+    target, ref = external, internal
+  else
+    return
+  end
+
+  confirmingDisable = false
+  extendTargetFrom(target, ref, direction)
+end
+
+local function edgeZone(direction, thickness, isVertical)
+  local props = {
+    accepts = { "display" },
+    value = direction,
+    onDrop = onCanvasDrop,
+    enabled = not actionPending,
+    fill = "surface_variant/0.12",
+    border = "outline/0.3",
+    borderWidth = 1,
+    radius = 6,
+    -- Without this the framework falls back to pixel-exact hit-testing (0
+    -- tolerance) instead of its "closest zone wins" proximity search — with
+    -- these zones only as wide/tall as the chip row, a straight drag across
+    -- the whole canvas would need to land inside a ~28px strip the entire
+    -- way. A generous slop makes whichever edge is nearest the cursor win.
+    hitSlop = 72,
+  }
+  if isVertical then
+    props.width = thickness
+  else
+    props.height = thickness
+  end
+  return ui.dropZone(props, {})
+end
+
+-- To-scale 2-display canvas: laptop chip fixed, external chip draggable onto
+-- one of the four edge zones around it. Only meaningful with exactly an
+-- internal + external pair, same precondition every quick mode already uses.
+local function arrangementCanvas()
+  local internal = internalDisplay()
+  if internal == nil then
+    return nil
+  end
+  local external = externalDisplay(internal.port)
+  if external == nil then
+    return nil
+  end
+
+  local internalChip = chip(internal, true, false)
+  local externalChip = chip(external, true, true)
+  local rel = relation(internal, external)
+  local pair
+  if rel == "left" then
+    pair = ui.row({ gap = 12, align = "center", justify = "center" }, { externalChip, internalChip })
+  elseif rel == "above" then
+    pair = ui.column({ gap = 12, align = "center", justify = "center" }, { externalChip, internalChip })
+  elseif rel == "below" then
+    pair = ui.column({ gap = 12, align = "center", justify = "center" }, { internalChip, externalChip })
+  else
+    pair = ui.row({ gap = 12, align = "center", justify = "center" }, { internalChip, externalChip })
+  end
+
+  local middleRow = ui.row({ gap = 8, align = "stretch", justify = "center" }, {
+    edgeZone("left", 28, true),
+    pair,
+    edgeZone("right", 28, true),
+  })
+
+  return ui.column({ gap = 8, align = "stretch", fill = "surface_variant/0.06", radius = 12, padding = 12 }, {
+    edgeZone("above", 28, false),
+    middleRow,
+    edgeZone("below", 28, false),
+    ui.label({
+      text = "Drag either display onto an edge to reposition it · tap " .. external.port .. "'s badge to turn it off",
+      fontSize = 10,
+      color = "on_surface_variant",
+      textAlign = "center",
+      maxLines = 2,
+    }),
+  })
 end
 
 -- Per-user control FIFO for wl-mirror's --stream mode (it reads lines on
@@ -208,7 +448,9 @@ local function offCommand(port)
 end
 
 local function positionCommand(port, x, y)
-  return "niri msg output " .. quoteShellArgument(port) .. " position set " .. tostring(math.floor(x)) .. " " .. tostring(math.floor(y))
+  -- clap (niri's CLI parser) reads a leading '-' as a flag, not a negative
+  -- number, so a negative X/Y needs `--` first (see extendTargetFrom above).
+  return "niri msg output " .. quoteShellArgument(port) .. " position set -- " .. tostring(math.floor(x)) .. " " .. tostring(math.floor(y))
 end
 
 -- Duplicate's fullscreen wl-mirror window hides whatever real windows were
@@ -347,41 +589,6 @@ local function openDetail(port)
   render()
 end
 
-local function deviceRow(display, underCursor)
-  local tag = nil
-  if display.focused then
-    tag = ui.label({ text = "Main", fontSize = 11, color = "primary", fontWeight = "bold" })
-  elseif not display.enabled then
-    tag = ui.label({ text = "Off", fontSize = 11, color = "on_surface_variant" })
-  end
-
-  local children = {
-    ui.glyph({ name = "device-desktop", size = 20, color = display.enabled and "on_surface" or "on_surface_variant" }),
-    ui.column({ gap = 1, flexGrow = 1 }, {
-      ui.label({ text = display.name, fontWeight = "bold", color = "on_surface", maxLines = 1 }),
-      ui.label({ text = display.port, fontSize = 11, color = "on_surface_variant" }),
-    }),
-  }
-  if tag ~= nil then
-    table.insert(children, tag)
-  end
-  table.insert(children, ui.glyph({ name = "chevron-right", size = 16, color = "on_surface_variant" }))
-
-  return ui.row({
-    key = "device:" .. display.port,
-    fill = underCursor and "primary/0.1" or (display.focused and "primary/0.06" or "surface_variant/0.18"),
-    border = underCursor and "primary" or (display.focused and "primary/0.6" or "outline/0.35"),
-    borderWidth = underCursor and 2 or 1,
-    radius = 10,
-    padding = 12,
-    gap = 10,
-    align = "center",
-    onClick = function()
-      openDetail(display.port)
-    end,
-  }, children)
-end
-
 local function modeButton(label, glyph, onClick)
   return ui.button({
     text = label,
@@ -418,14 +625,21 @@ local function quickModesRow()
 end
 
 local function listView()
-  local rows = {}
-  for index, display in ipairs(snapshot.displays) do
-    table.insert(rows, deviceRow(display, index - 1 == cursorIndex))
+  local children = { quickModesRow() }
+  local canvas = arrangementCanvas()
+  if canvas ~= nil then
+    table.insert(children, canvas)
+  elseif #snapshot.displays == 0 then
+    table.insert(children, ui.label({ text = "No displays found.", color = "on_surface_variant" }))
+  else
+    table.insert(children, ui.label({
+      text = "Connect a laptop panel and an external display to arrange them here.",
+      color = "on_surface_variant",
+      fontSize = 11,
+      maxLines = 3,
+    }))
   end
-  if #rows == 0 then
-    table.insert(rows, ui.label({ text = "No displays found.", color = "on_surface_variant" }))
-  end
-  return ui.scroll({ flexGrow = 1, gap = 8, align = "stretch" }, { quickModesRow(), table.unpack(rows) })
+  return ui.scroll({ flexGrow = 1, gap = 8, align = "stretch" }, children)
 end
 
 local function detailView()
@@ -553,6 +767,7 @@ function onOpen(_context)
   actionError = ""
   selectedPort = nil
   cursorIndex = 0
+  confirmingDisable = false
   noctalia.state.set("refresh_requested", (noctalia.state.get("refresh_requested") or 0) + 1)
   render()
 end
