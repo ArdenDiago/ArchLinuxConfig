@@ -1,16 +1,8 @@
 #!/usr/bin/env bash
 #
-# Full system bootstrap for ArchLinuxNewConfig — installs the underlying
-# Arch system (yay, Homebrew, git identity, core apps, dev tooling, NVIDIA,
-# SDDM, Niri + noctalia, desktop services, dotfiles, Firefox
-# customizations, login theme, lock screen, ble.sh) that the repo root's own
-# setup.sh (the quickshell-lock/terminal-clock extras installer) assumes
-# already exists.
-#
-# Forked from linux_conf-main/Full-Setup/arch/setup.sh — same modular
-# runner, same modules/lib, minus modules/26-dankmaterialshell.sh: this repo
-# installs noctalia as DMS's replacement (see modules/16-niri.sh), so
-# DankMaterialShell itself is deliberately never installed here.
+# Full system bootstrap for ArchLinuxNewConfig: yay, Homebrew, git
+# identity, core apps, dev tooling, NVIDIA, SDDM + login theme, Niri +
+# noctalia, desktop services, dotfiles, Firefox customizations, ble.sh.
 #
 # Modular & dynamic: every file in modules/ is a self-contained step that
 # defines MODULE_DESC and a module_step() function. This script just sources
@@ -109,8 +101,7 @@ if [ "${#FAILED_STEPS[@]}" -eq 0 ]; then
   summary_box "${C_BOLD}${C_GREEN}" \
     "✓ All $total_modules/$total_modules steps completed" \
     "Total time: $(format_duration "$total_elapsed")"
-  echo -e "${C_DIM}System bootstrap done. Now run ../setup.sh from the repo root${C_RESET}"
-  echo -e "${C_DIM}for the optional extras: quickshell-lock/terminal-clock.${C_RESET}"
+  echo -e "${C_DIM}System bootstrap done — reboot to land on the SDDM login screen.${C_RESET}"
 else
   summary_lines=("⚠ $succeeded/$total_modules steps completed" "Total time: $(format_duration "$total_elapsed")" "" "Needs another look:")
   for s in "${FAILED_STEPS[@]}"; do

@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 #
-# skwd-wall: the wallpaper picker actually in use now (a quickshell app),
-# replacing the DankMaterialShell-era swaybg carousel modules/23-wallpaper.sh
-# still installs — that module is dead code at this point (see
-# dotfiles/niri/binds.kdl: Mod+W/Mod+Shift+W both point at skwd-wall, not
-# select.sh) but hasn't been removed yet. skwd-wall and skwd-daemon-bin are
+# skwd-wall: the wallpaper picker/renderer (a quickshell app), bound to
+# Mod+W/Mod+Shift+W in dotfiles/niri/binds.kdl and started from
+# dotfiles/niri/config.kdl. skwd-wall and skwd-daemon-bin are
 # AUR-only; quickshell and matugen (both dependencies) are now in Arch's
 # official extra repo, so those two come from pac_install instead.
 #

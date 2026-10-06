@@ -1,38 +1,17 @@
 #!/usr/bin/env bash
 #
-# Desktop services and CLI tools that used to be bundled into this module
-# alongside waybar, but aren't actually waybar-specific — NetworkManager
-# and bluetooth (their D-Bus services back whatever bar/panel is actually
-# running now, e.g. DankMaterialShell's own), plus a handful of CLI tools
-# other pieces of this setup lean on:
-#
-# playerctl backs DMS's media widget, jq backs the Mod+W/Mod+Shift+W skwd-wall
-# binds in dotfiles/niri/binds.kdl (flipping config.json's displayMode field
-# before each toggle), pacman-contrib's checkupdates backs
-# dotfiles/tmux/welcome.sh's update-count line, pamixer backs volume
-# control, and the Nerd Font renders glyph icons throughout (DMS's bar
-# included). cava + EasyEffects back the bassboost preset below.
-# polkit-gnome (already spawned by modules/16-niri.sh) supplies the auth
-# agent NetworkManager needs for some operations.
+# Desktop services and CLI tools the niri session leans on: NetworkManager
+# and bluetooth (their D-Bus services back noctalia's widgets), jq (the
+# Mod+W/Mod+Shift+W skwd-wall binds and the floating-TUI launch scripts),
+# pacman-contrib's checkupdates (dotfiles/tmux/welcome.sh), the Nerd Font
+# for glyph icons, and EasyEffects + the bassboost preset below. rtkit lets
+# PipeWire get realtime priority — without it audio crackles whenever the
+# CPU is busy.
 #
 # impala (wifi) and bluetuith (bluetooth) are keyboard-driven TUIs bound
-# to Mod+Shift+N / Mod+B in dotfiles/niri/binds.kdl, replacing noctalia's
-# mouse-driven Control Center tabs for those two — see
-# dotfiles/niri/launch-wifi-tui.sh / launch-bluetooth-tui.sh (installed by
-# modules/16-niri.sh). impala talks to iwd directly (not NetworkManager),
-# so iwd is installed and enabled here too even though NetworkManager is
-# the system's actual connection manager — impala needs iwd's own D-Bus
-# service running regardless of which one owns the wifi radio day to day.
-#
-# waybar itself, and its v7-theme dotfiles/click-handlers that only made
-# sense wired into a waybar custom-module JSON protocol (config-*.jsonc,
-# style.css, clock.sh, update.sh, window-*.sh, network-menu.sh,
-# bluetooth-menu.sh, cava-spectrum.conf, media-spectrum.py,
-# media-button.sh, media-boost-toggle.sh) were removed from this repo —
-# no longer in use, replaced by DankMaterialShell's own bar/network/
-# bluetooth/media widgets. bassboost.json is the one survivor: it's a
-# plain EasyEffects preset, not waybar-specific, and still loadable
-# straight from EasyEffects' own UI without any toggle script.
+# to Mod+Shift+N / Mod+B in dotfiles/niri/binds.kdl. impala talks to iwd
+# directly (not NetworkManager), so iwd is installed and enabled here too
+# even though NetworkManager is the system's actual connection manager.
 #
 MODULE_DESC="Desktop services (NetworkManager, bluetooth, media/update CLI tools)"
 
@@ -40,7 +19,7 @@ module_step() {
   local src="$SCRIPT_DIR/dotfiles/easyeffects"
 
   pac_install playerctl jq pamixer ttf-jetbrains-mono-nerd pacman-contrib \
-    networkmanager bluez bluez-utils libnotify easyeffects cava iwd impala || return 1
+    networkmanager bluez bluez-utils libnotify easyeffects cava iwd impala rtkit || return 1
 
   track_rollback "sudo systemctl disable --now NetworkManager.service 2>/dev/null || true"
   sudo systemctl enable --now NetworkManager.service || return 1

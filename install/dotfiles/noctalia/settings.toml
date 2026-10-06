@@ -1,10 +1,10 @@
 # noctalia settings, as configured in the live 2026-08-28 session that
 # replaced DankMaterialShell with noctalia on a niri desktop.
 #
-# Installed by setup/setup.sh to ~/.local/state/noctalia/settings.toml (the
+# Installed by modules/16-niri.sh to ~/.local/state/noctalia/settings.toml (the
 # state-dir settings.toml, which noctalia's config stack always applies last
 # and lets override anything else — see noctalia's own `config export`
-# --help). @@HOME@@ is replaced with the real $HOME by setup.sh; the file
+# --help). @@HOME@@ is replaced with the real $HOME by that module; the file
 # isn't valid as-is until that substitution runs.
 
 [brightness]
@@ -15,17 +15,18 @@ minimum_brightness = 0.02
 
 [hooks]
 # Keeps niri's Overview backdrop color in sync with the current palette —
-# see scripts/sync-overview-color.sh for why this exists at all.
+# see niri/sync-overview-color.sh for why this exists at all.
 colors_changed = "@@HOME@@/.config/niri/sync-overview-color.sh"
 
 [theme]
-builtin = "Noctalia"
-community_palette = "Oxocarbon"
+builtin = "Gruvbox"
+community_palette = "Oxide"
 mode = "dark"
-# Regenerate the palette from the current wallpaper on every change, rather
-# than staying pinned to a fixed community palette (noctalia's default).
-source = "wallpaper"
-wallpaper_scheme = "m3-content"
+# Pinned to the Oxide community palette. Was "wallpaper" (regenerate from
+# the current wallpaper on every change) until 2026-10; wallpaper_scheme
+# only matters if this is switched back.
+source = "community"
+wallpaper_scheme = "vibrant"
 
     [theme.templates]
     # Push the generated palette into these apps' own theme files whenever
@@ -87,6 +88,9 @@ control_center_placement = "floating"
 control_center_position = "center"
 session_placement = "floating"
 session_position = "center"
+wallpaper_placement = "floating"
+wallpaper_position = "center"
+transparency_mode = "glass"
 
 [shell.session]
 # Single-column list (not the multi-column grid default) — each action its
@@ -128,6 +132,24 @@ countdown_seconds = 3
 [shell]
 # 12-hour clock instead of noctalia's default 24-hour, with day + date.
 time_format = "{:%a %d %I:%M %p}"
+# Rounder panels/widgets than the default 1.0.
+corner_radius_scale = 1.6
+
+    [shell.screen_corners]
+    size = 21
+
+    [shell.shadow]
+    alpha = 0.94
+
+[accessibility]
+# Whole shell UI at 85% — the default felt oversized on the 1080p panels.
+ui_scale = 0.85
+
+[hot_corners]
+delay_ms = 2000
+
+[weather]
+enabled = false
 
 [widget.clock]
 format = "{:%a %d %I:%M %p}"
@@ -151,7 +173,7 @@ show_label = false
 # "sysmon" widget type (one stat per widget instance — there's no built-in
 # widget that combines multiple stats into one). Each shows icon only
 # (show_value/show_glyph = false where relevant), and left-clicking any of
-# them toggles a floating, centered btop — see scripts/launch-btop-float.sh.
+# them toggles a floating, centered btop — see niri/launch-btop-float.sh.
 [widget.cpu]
 stat = "cpu_usage"
 type = "sysmon"

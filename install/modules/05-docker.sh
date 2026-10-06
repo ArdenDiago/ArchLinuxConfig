@@ -13,6 +13,10 @@ module_step() {
     pac_install docker docker-compose docker-buildx || return 1
   fi
 
+  # Kubernetes/containerd tooling used alongside Docker: local cluster,
+  # chart manager, containerd CLI.
+  pac_install minikube helm nerdctl || return 1
+
   track_rollback "sudo systemctl disable --now docker.service 2>/dev/null || true"
   sudo systemctl enable --now docker.service || return 1
 

@@ -65,6 +65,9 @@ cursor {
 
 spawn-at-startup "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
 spawn-at-startup "kwalletd6"
+// skwd-wall draws the desktop background (noctalia's own wallpaper renderer
+// is disabled in noctalia/settings.toml), so it has to be told to put one up.
+spawn-at-startup "skwd" "wall" "random_start"
 spawn-at-startup "noctalia" "--daemon"
 
 include "binds.kdl"

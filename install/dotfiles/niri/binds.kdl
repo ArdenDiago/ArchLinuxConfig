@@ -1,7 +1,7 @@
 binds {
     Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
     Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
-    Mod+Alt+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "hyprlock"; }
+    Mod+Alt+L hotkey-overlay-title="Lock the Screen" { spawn "noctalia" "msg" "session" "lock"; }
     // skwd-wall, not noctalia's own wallpaper panel — see
     // modules/26-wallpaper-skwd.sh. displayMode is a persistent config.json
     // field, not a per-call arg, so each bind flips it before toggling.
@@ -29,7 +29,13 @@ binds {
     // Direct shortcut into Control Center's system tab (same floating,
     // centered panel as Mod+N, just opened straight to that tab).
     Mod+M hotkey-overlay-title="System Resources" { spawn "noctalia" "msg" "panel-toggle" "control-center" "system"; }
+    // Restarts noctalia to drop its memory leak; if noctalia runs as a capped
+    // systemd unit, first moves launcher-started apps out from under the cap.
+    Mod+Shift+M hotkey-overlay-title="Free Memory" { spawn-sh "~/.config/niri/free-memory.sh"; }
     Mod+Comma hotkey-overlay-title="Settings" { spawn "noctalia" "msg" "settings-toggle"; }
+    // mtxpanel (per-app audio mixer, built from ~/Coding/SystemEQApp — not
+    // installed by this repo). Toggles its quickshell fader popup.
+    Mod+A hotkey-overlay-title="MTX Panel Faders" { spawn-sh "pkill -f MtxPanelPopup.qml || quickshell -p ~/.local/share/mtxpanel/quickshell/MtxPanelPopup.qml"; }
 
     Mod+Q repeat=false { close-window; }
 
@@ -140,10 +146,6 @@ binds {
 
     // Overview of every window/workspace on the current monitor.
     Mod+Tab repeat=false hotkey-overlay-title="Overview" { toggle-overview; }
-
-    // Independent of noctalia/desktopdesigner — Rust/Ratatui fullscreen
-    // popup, see docs/terminal-clock.md and terminal-clock/popup.sh.
-    Mod+T hotkey-overlay-title="Terminal Clock" { spawn-sh "~/Coding/ArchLinuxNewConfig/terminal-clock/popup.sh"; }
 
     Mod+Shift+E { quit; }
     Mod+Shift+Slash { show-hotkey-overlay; }

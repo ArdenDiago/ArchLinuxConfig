@@ -177,6 +177,101 @@ local function chipSize(display)
   return math.max(56, math.floor(w * scale)), math.max(40, math.floor(h * scale))
 end
 
+-- External-monitor brightness over DDC/CI (ddcutil, optional dependency) —
+-- talks to that one monitor's own backlight via its connector's i2c bus, so
+-- the laptop panel is untouched. VCP feature 0x10 is luminance.
+local brightness = nil -- percent; nil until read (or if the monitor has no DDC)
+local brightnessBusy = false
+local brightnessQueued = nil
+
+local function ddcutilCommand(port, args)
+  -- The kernel exposes each connector's DDC bus as .../ddc/i2c-dev/i2c-N;
+  -- handing ddcutil that N skips its slow all-bus probe.
+  return "b=$(echo /sys/class/drm/card*-" .. quoteShellArgument(port) .. "/ddc/i2c-dev/i2c-*); "
+    .. "ddcutil --bus \"${b##*i2c-}\" " .. args
+end
+
+local function readBrightness()
+  local internal = internalDisplay()
+  local external = externalDisplay(internal and internal.port or nil)
+  if external == nil or not external.enabled or not noctalia.commandExists("ddcutil") then
+    return
+  end
+  noctalia.runAsync(ddcutilCommand(external.port, "-t getvcp 10"), function(result)
+    -- Terse output: "VCP 10 C <current> <max>".
+    local current, max = (result.stdout or ""):match("C (%d+) (%d+)")
+    if result.exitCode == 0 and current ~= nil and tonumber(max) > 0 then
+      brightness = math.floor(tonumber(current) * 100 / tonumber(max) + 0.5)
+      render()
+    end
+  end, COMMAND_TIMEOUT_MS)
+end
+
+-- ddcutil takes ~100ms+ per write, far slower than slider drag events, so
+-- only one runs at a time and the latest value seen meanwhile goes next.
+local function setBrightness(port, value)
+  -- Label follows the fader immediately; the monitor itself catches up below.
+  if brightness ~= value then
+    brightness = value
+    render()
+  end
+  if brightnessBusy then
+    brightnessQueued = value
+    return
+  end
+  brightnessBusy = true
+  local started = noctalia.runAsync(ddcutilCommand(port, "--noverify setvcp 10 " .. tostring(value)), function(result)
+    brightnessBusy = false
+    if result.exitCode ~= 0 then
+      local message = noctalia.string.trim(result.stderr or ""):match("^[^\r\n]*") or ""
+      actionError = message ~= "" and message or "Could not set brightness."
+      brightnessQueued = nil
+    end
+    local queued = brightnessQueued
+    brightnessQueued = nil
+    if queued ~= nil and queued ~= value then
+      setBrightness(port, queued)
+    else
+      render()
+    end
+  end, COMMAND_TIMEOUT_MS)
+  if not started then
+    brightnessBusy = false
+  end
+end
+
+-- Lives inside the external chip itself (bottom edge), as a sibling of the
+-- drag handle rather than a child of it, same reason as powerBadge below.
+-- Inset on a surface pill so the track stays readable on the chip's fill.
+local function brightnessFader(display)
+  if not display.enabled or not noctalia.commandExists("ddcutil") then
+    return nil
+  end
+  return ui.row({ gap = 6, align = "center", fill = "surface/0.85", radius = 7, paddingH = 8, paddingV = 2 }, {
+    ui.glyph({ name = "brightness-up-filled", size = 14, color = "on_surface" }),
+    ui.slider({
+      flexGrow = 1,
+      min = 0,
+      max = 100,
+      step = 1,
+      value = brightness or 50,
+      onChange = function(value)
+        value = tonumber(value)
+        if value ~= nil then
+          setBrightness(display.port, math.floor(value + 0.5))
+        end
+      end,
+    }),
+    ui.label({
+      text = brightness ~= nil and (tostring(brightness) .. "%") or "–",
+      fontSize = 11,
+      color = "on_surface",
+      minWidth = 30,
+      textAlign = "right",
+    }),
+  })
+end
+
 -- The power control for the draggable chip only (per-scope: the laptop panel
 -- chip stays plain, nothing asked for a toggle on it). A drag_source has no
 -- onClick of its own — the framework gives it a dedicated press/motion/
@@ -270,16 +365,22 @@ local function chip(display, draggable, showBadge)
     }, { handle })
   end
 
-  return ui.row({
-    width = w,
-    height = h,
-    align = "center",
-    justify = "center",
+  local fill = showArmed and "error/0.85" or (display.enabled and "primary/0.8" or "surface_variant/0.5")
+  local top = ui.row({ flexGrow = 1, align = "center", justify = "center", gap = 6 }, { handle, powerBadge(display) })
+  local fader = brightnessFader(display)
+  if fader == nil then
+    return ui.row({ width = w, height = h, align = "stretch", padding = 6, fill = fill, radius = 8 }, { top })
+  end
+  -- Wider and taller than the plain chip so the fader fits along the bottom.
+  return ui.column({
+    width = w + 50,
+    height = h + 34,
+    align = "stretch",
     gap = 6,
     padding = 6,
-    fill = showArmed and "error/0.85" or (display.enabled and "primary/0.8" or "surface_variant/0.5"),
+    fill = fill,
     radius = 8,
-  }, { handle, powerBadge(display) })
+  }, { top, fader })
 end
 
 -- Shared onDrop for all four edge zones: the zone's own `value` IS the
@@ -573,6 +674,20 @@ local function modeDuplicate()
   mirrorActive = true
 end
 
+local function ddcutilHint()
+  local internal = internalDisplay()
+  local external = externalDisplay(internal and internal.port or nil)
+  if external == nil or not external.enabled or noctalia.commandExists("ddcutil") then
+    return nil
+  end
+  return ui.label({
+    text = "Install ddcutil for " .. external.port .. " brightness: sudo pacman -S ddcutil",
+    fontSize = 10,
+    color = "on_surface_variant",
+    maxLines = 2,
+  })
+end
+
 local function actionButton(label, glyph, onClick, variant)
   return ui.button({
     text = label,
@@ -629,6 +744,10 @@ local function listView()
   local canvas = arrangementCanvas()
   if canvas ~= nil then
     table.insert(children, canvas)
+    local hint = ddcutilHint()
+    if hint ~= nil then
+      table.insert(children, hint)
+    end
   elseif #snapshot.displays == 0 then
     table.insert(children, ui.label({ text = "No displays found.", color = "on_surface_variant" }))
   else
@@ -770,6 +889,7 @@ function onOpen(_context)
   confirmingDisable = false
   noctalia.state.set("refresh_requested", (noctalia.state.get("refresh_requested") or 0) + 1)
   render()
+  readBrightness()
 end
 
 function onClose()

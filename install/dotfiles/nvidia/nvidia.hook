@@ -1,0 +1,15 @@
+[Trigger]
+Operation=Install
+Operation=Upgrade
+Operation=Remove
+Type=Package
+Target=nvidia-open-dkms
+Target=linux
+Target=linux-lts
+
+[Action]
+Description=Rebuilding initramfs with NVIDIA modules...
+Depends=mkinitcpio
+When=PostTransaction
+NeedsTargets
+Exec=/usr/bin/mkinitcpio -P

@@ -5,9 +5,8 @@
 # extra repo, no AUR/source build needed; noctalia is too as of noctalia
 # v4+ (no quickshell-git/AUR needed either). xwayland-satellite gives niri
 # X11 app support. polkit-gnome supplies the auth agent the session needs.
-# alacritty/btop come from modules/03-core-apps.sh, hyprlock (the
-# lock-screen binary niri binds to) from modules/24-lockscreen.sh — not
-# reinstalled here.
+# alacritty/btop come from modules/03-core-apps.sh. The lock screen is
+# noctalia's own (Mod+Alt+L -> `noctalia msg session lock`).
 #
 # niri has no portal package of its own — without one, apps like Firefox
 # silently fail to screen-share and get a broken file picker. gnome/gtk
@@ -17,12 +16,15 @@
 MODULE_DESC="Niri + noctalia"
 
 module_step() {
+  # wl-mirror and ddcutil back the display-control plugin's Duplicate mode
+  # and external-monitor brightness fader (both optional to the plugin, but
+  # it only shows an install hint without them).
   # cliphist/wlogout dropped: noctalia's own clipboard and power-menu panels
   # (bound in binds.kdl) replace them, same as they replaced DMS's ipc calls
   # before. swaybg dropped too — noctalia manages its own wallpaper/daemon,
   # no separate wallpaper compositor needed for the niri session.
-  pac_install niri noctalia kwallet xwayland-satellite \
-    brightnessctl playerctl \
+  pac_install niri noctalia fuzzel kwallet xwayland-satellite \
+    brightnessctl playerctl wl-mirror ddcutil \
     polkit-gnome xdg-desktop-portal xdg-desktop-portal-gnome xdg-desktop-portal-gtk || return 1
 
   # niri needs a real DRM render device (docs/virtualbox-niri.md) — under
@@ -45,7 +47,8 @@ module_step() {
   install_dotfile "$SCRIPT_DIR/dotfiles/niri/launch-wifi-tui.sh" "$HOME/.config/niri/launch-wifi-tui.sh"
   install_dotfile "$SCRIPT_DIR/dotfiles/niri/launch-bluetooth-tui.sh" "$HOME/.config/niri/launch-bluetooth-tui.sh"
   install_dotfile "$SCRIPT_DIR/dotfiles/niri/brightness-step.sh" "$HOME/.config/niri/brightness-step.sh"
-  chmod +x "$HOME/.config/niri/"{sync-overview-color.sh,launch-btop-float.sh,launch-wifi-tui.sh,launch-bluetooth-tui.sh,brightness-step.sh}
+  install_dotfile "$SCRIPT_DIR/dotfiles/niri/free-memory.sh" "$HOME/.config/niri/free-memory.sh"
+  chmod +x "$HOME/.config/niri/"{sync-overview-color.sh,launch-btop-float.sh,launch-wifi-tui.sh,launch-bluetooth-tui.sh,brightness-step.sh,free-memory.sh}
   install_dotfile "$SCRIPT_DIR/dotfiles/niri/niri-portals.conf" \
     "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
 
@@ -82,8 +85,7 @@ module_step() {
 
   # A prior install that had DankMaterialShell running fights noctalia for
   # the compositor's notification D-Bus name and the same bar/panel screen
-  # space — same reason modules/16-niri.sh used to disable it for
-  # desktopdesigner. Safe no-op if DMS was never installed.
+  # space. Safe no-op if DMS was never installed.
   if systemctl --user is-enabled dms.service &>/dev/null || systemctl --user is-active dms.service &>/dev/null; then
     systemctl --user disable --now dms.service
     log "Disabled dms.service (DankMaterialShell) — it was still enabled from a prior install and would otherwise fight noctalia for the bar."
@@ -95,9 +97,8 @@ module_step() {
   # to grab it regardless of mako.service being disabled or absent from any
   # compositor's autostart, silently swapping noctalia's notification popups
   # for mako's. `disable` doesn't stop that D-Bus activation path, only
-  # `mask` does. Nothing in this repo installs mako anymore, but a prior
-  # install (before the Hyprland module was dropped) may still have it
-  # around — masking is a harmless no-op if it's absent.
+  # `mask` does. Nothing in this repo installs mako, but a prior install
+  # may still have it around — masking is a harmless no-op if it's absent.
   systemctl --user mask mako.service &>/dev/null || true
 
   # Best-effort: needs noctalia actually running to generate real theme
